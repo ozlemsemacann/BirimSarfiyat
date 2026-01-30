@@ -54,7 +54,7 @@ inputs['ASORTI_SAYISI'] = st.number_input(
     max_value=20.0,
     value=10.0) # Başlangıç değeri
 # Parça Sayısı Değerini 1 ile 30 arasına sınırlama
-inputs['PARCA_sAYISI'] = st.number_input(
+inputs['PARCA_SAYISI'] = st.number_input(
     "PARCA_SAYISI",
     min_value=1.0,
     max_value=30.0,
@@ -73,5 +73,6 @@ if st.button("Tahmin Et"):
     X_new_pool = Pool(X_new, cat_features=cat_features)
     prediction = model.predict(X_new_pool)[0]
     st.success(f"🔮 Tahmini Birim Sarfiyat: **{prediction:.2f}**")
+
 
 
