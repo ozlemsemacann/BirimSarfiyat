@@ -1,136 +1,75 @@
 import streamlit as st
 import pandas as pd
-from catboost import CatBoostRegressor, Pool
-import os
-
-# Sayfa Ayarı
-st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
-
-# --------------------------------------------------------
-# AYARLAR (GitHub'daki isimlerle BİREBİR aynı olmalı)
-# --------------------------------------------------------
-EXCEL_FILE_NAME = "_YuklenenDokumaDosya30.1.xlsx"
-MODEL_FILE_NAME = "Dokuma_BirimSarfiyatModel.cbm"
+from catboost import CatBoostRegressor
 
 # -----------------------------
-# 1. VERİ YÜKLEME VE HATA AYIKLAMA
+# Modeli yükle
 # -----------------------------
-@st.cache_data
-def load_data():
-    # 1. Yöntem: Direkt dosya adını dene
-    if os.path.exists(EXCEL_FILE_NAME):
-        return pd.read_excel(EXCEL_FILE_NAME)
-    
-    # 2. Yöntem: Bulamazsa Debug Modunu Aç
-    else:
-        st.error(f"❌ KRİTİK HATA: '{EXCEL_FILE_NAME}' dosyası bulunamadı!")
-        
-        # Şu an hangi klasördeyiz?
-        current_dir = os.getcwd()
-        st.warning(f"📂 Çalışılan Klasör: {current_dir}")
-        
-        # Klasörde hangi dosyalar var? (Bunu ekrana basacağız)
-        files = os.listdir(current_dir)
-        st.info(f"📄 Bu klasördeki dosyalar: {files}")
-        
-        st.stop() # Programı durdur
-        return pd.DataFrame()
-
 @st.cache_resource
 def load_model():
     model = CatBoostRegressor()
-    if os.path.exists(MODEL_FILE_NAME):
-        model.load_model(MODEL_FILE_NAME)
-        return model
-    else:
-        st.error(f"❌ Model dosyası ({MODEL_FILE_NAME}) bulunamadı.")
-        return None
+    model.load_model("Dokuma_BirimSarfiyatModel.cbm")
+    return model
 
-# Yüklemeleri Başlat
-df = load_data()
 model = load_model()
 
 # -----------------------------
-# 2. ARAYÜZ (Filtreleme İşlemleri)
+# Streamlit Arayüzü
 # -----------------------------
-st.title("🧵 Akıllı Birim Sarfiyat Tahmini")
+st.title("🧵 Birim Sarfiyat Tahmini")
 
-# Eğer veri boşsa veya okunmadıysa aşağıya geçme
-if df is None or df.empty:
-    st.stop()
+st.markdown("Modeli önceden eğittik ve yükledik. Şimdi değerleri gir, tahmini al!")
 
+# Kullanıcıdan girişler
 inputs = {}
-st.markdown("---")
+inputs['DEPARTMAN'] = st.selectbox("DEPARTMAN", ['MAN','BOY','BABYBOY'])
+inputs['MODEL_TURU'] = st.selectbox("MODEL_TURU", ['LONG_SLEEVE_SHIRT','TROUSERS','BERMUDA','SHORT_SLEEVE_SHIRT','OVERSHIRT','SWIMMING_SHORT','SHORT','OVERALLS'])
+inputs['MODEL_DETAYI'] = st.selectbox("MODEL_DETAYI", ['CIFT_CEP_ROBALI','TEK_CEP_ROBALI','5_CEP','CHINO_CEP_ARKA_1_YAPISTIRMA_CEP_BELI_LASTIKLI','5_CEP_PACA_KATLAMALI','5_CEP_BELI_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA','CHINO_CEP_ARKA_2_YAPISTIRMA_CARGO','CHINO_CEP_ARKA_2_YAPISTIRMA_BELI_LASTIKLI','5_CEP_BELI_LASTIKLI_CARGO','CHINO_CEP_ARKA_1_YAPISTIRMA_BELI_LASTIKLI','5_CEP_CARGO','5_CEP_CARGO_CEP','CEP_YOK_ROBASIZ','TEK_CEP_ROBASIZ','CEP_YOK_CIFT_KAT_ROBA','CEPSIZ_ROBALI','CEPSIZ_ROBASIZ','TEK_CEP','CEP_YOK_TEK_KAT_ROBA','CIFT_CEP','CIFT_CEP_TEK_KAT_ROBA','CHINO_CEP_ARKA_FILETO','ARKA_FILETO_BELI_LASTIKLI','CHINO_CEP_ARKA_FILETO_BELI_LASTIKLI','CHINO_CEP_CARGO_BEL_PACA_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_BELI_LASTIKLI DUYGUYA SOR','CHINO_CEP_CARGO_BELI_LASTIKLI','YAN_CEP_ARKA_FILETO_BELI_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_CARGO_BELI_LASTIKLI','CARGO_CEP_BELI_LASTIKLI','YAN_CEP_ARKA_1_YAPISTIRMA_BELI_LASTIKLI','CHINO_CEP_ARKA_1_YAPISTIRMA_CEP','CARGO_CEP_BEL_PACA_LASTIKLI','ARKA_1_YAPISTIRMA_BELI_LASTIKLI','CHINO_CEP_ARKA_1_YAPISTIRMA_CARGO','CHINO_CEP_BELI_LASTIKLI','YAN_CEP_ARKA_FILETO_BEL_PACA_LASTIKLI','CHINO_CEP_BELI_LASTIKLI_PACA_KATLAMALI','YAN_CEP_ARKA_2_YAPISTIRMA_BEL_PACA_LASTIKLI','PUNTEREZ_CARGO','CHINO_CEP_BEL_PACA_LASTIKLI','CHINO_CEP','CIFT_CEP_ROBALI EK 1 CEP VAR','JUMPSUIT_1_CEP','TEK_CEP_ROBALI_APOLETLI','CIFT_CEP_ROBALI_APOLETLI','CEPSIZ_ROBALI_APOLETLI','YAN_CEP_BELI_LASTIKLI','YAN_CEP_BEL_PACA_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_CEP_BELI_LASTIKLI','BELI_LASTIKLI','CHINO_CEP_ARKA_1_YAPISTIRMA_BEL_PACA_LASTIKLI','YAN_CEP_CARGO_BEL_PACA_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_BEL_PACA_LASTIKLI','ARKA_2_YAPISTIRMA','SALOPET_1_CEP','YAN_CEP_BELI_LASTIKLI_PACA_KATLAMALI','JUMPSUIT_1_CEP_CHINO','YOK'])
+inputs['FIT'] = st.selectbox("FIT", ['OVERSIZE_FIT','PEDRO-SLIM_FIT_DENIM','90s_SLIM_FIT','RELAX_FIT','CARLO_SKINNY_FIT_DENIM','SERGIO_REGULAR_FIT','BAGGY_FIT','STRAIGHT_FIT','TAPERED_SLIM','TAPERED_FIT_RELAXED','SLIM_FIT','CARROT_RELAXED_FIT','TAPERED_WIDE_LEG_FIT','REGULAR_FIT','BARREL_FIT','SKATER_FIT','JORT','CARGO_RELAX_FIT','WIDE_LEG_FIT','SLIM_CUT_FIT','RELAXED_SLOUCHY_FIT','BOXY_FIT','MODERN_FIT','LUKE','ANDY','NATHAN','JOGGER_SLIM_FIT','CROPPED_FIT','JOGGER_FIT','RELAXED_JOGGER_FIT','CARGO_REGULAR_SHORT','CARGO_REGULAR_JOGGER','PULL_ON','CARGO_JOGGER_FIT','BALLOON_FIT','CARPENTER_FIT','CARGO_FIT','CARGO_PARACHUTE','LOOSE_FIT','JUMPSUIT','CARROT_FIT','5_POCKET_SHORT','CARGO_SHORT','SALOPET','TAPERED'])
+# Kumaş Eni Değerini 130 ile 176 arasına sınırlama
+inputs['KUMAS_ENI'] = st.number_input(
+    "KUMAS_ENI",
+    min_value=90.0,
+    max_value=195.0,
+    value=146.0) # Başlangıç değeri
+# Kumaş Çekme Değerini 1 ile 30 arasına sınırlama
+inputs['KUMAS_CEKME_DEGERI_EN'] = st.number_input(
+    "KUMAS_CEKME_DEGERI_EN",
+    min_value=-13.0,
+    max_value=0.0,
+    value=1.5) # Başlangıç değeri
+# Kumaş Çekme Değerini 1 ile 30 arasına sınırlama
+inputs['KUMAS_CEKME_DEGERI_BOY'] = st.number_input(
+    "KUMAS_CEKME_DEGERI_BOY",
+    min_value=-22.0,
+    max_value=8.0,
+    value=1.5) # Başlangıç değeri
+inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", ['ANA_BEDEN','ASTAR','FILE','TELA','PAT_TELASI'])
+inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", ['YONLU','YONSUZ'])
+inputs['ASORTI'] = st.selectbox("ASORTI", ['5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_13/14 Y_','34_36_38_40_42_','7/8 Y_8/9 Y_9/10 Y_11/12 Y_13/14 Y_','34_36_38_40_42_44_','36_38_40_42_44_46_','34_36_38_40_42_44_46_','28_30_32_34_36_38_40_42_','34_36_38_40_42_44_46_48_','28_30_32_34_36_38_40_','32_34_36_38_40_42_','28_30_32_34_','7/8 Y_8/9 Y_9/10 Y_11/12 Y_12/13 Y_13/14 Y_','5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_12/13 Y_13/14 Y_','S_M_L_XL_XXL_3XL_','5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_','36_38_40_42_44_','30_32_34_36_','30_32_34_36_38_','6-9_9-12_12-18_18-24_24-36_3-4_4-5_5-6_','30_32_34_36_38_40_42_44_46_','28_30_32_34_36_38_','S_M_L_XL_XXL_','XS_S_M_L_XL_XXL_','XS_S_M_L_XL_'])
+# Asorti Sayısı Değerini 1 ile 30 arasına sınırlama
+inputs['ASORTI_SAYISI'] = st.number_input(
+    "ASORTI_SAYISI",
+    min_value=5.0,
+    max_value=20.0,
+    value=10.0) # Başlangıç değeri
+# Parça Sayısı Değerini 1 ile 30 arasına sınırlama
+inputs['PARCA_sAYISI'] = st.number_input(
+    "PARCA_SAYISI",
+    min_value=1.0,
+    max_value=30.0,
+    value=2.0) # Başlangıç değeri
 
-col_main1, col_main2 = st.columns([1, 1])
+# DataFrame oluştur
+X_new = pd.DataFrame([inputs])
 
-with col_main1:
-    st.subheader("📋 Model Seçimi")
-    
-    # 1. DEPARTMAN
-    dept_list = sorted(df['DEPARTMAN'].astype(str).unique())
-    secilen_dept = st.selectbox("DEPARTMAN", dept_list)
-    inputs['DEPARTMAN'] = secilen_dept
-    df_step1 = df[df['DEPARTMAN'] == secilen_dept]
+# Tahmin
+if st.button("Tahmin Et"):
+    from catboost import Pool
 
-    # 2. MODEL TÜRÜ
-    tur_list = sorted(df_step1['MODEL_TURU'].astype(str).unique())
-    secilen_tur = st.selectbox("MODEL_TURU", tur_list)
-    inputs['MODEL_TURU'] = secilen_tur
-    df_step2 = df_step1[df_step1['MODEL_TURU'] == secilen_tur]
+    cat_features = ['DEPARTMAN', 'MODEL_TURU', 'Model_Detayi','FIT',
+                    'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
 
-    # 3. MODEL DETAYI
-    detay_list = sorted(df_step2['MODEL_DETAYI'].astype(str).unique())
-    secilen_detay = st.selectbox("MODEL_DETAYI", detay_list)
-    inputs['MODEL_DETAYI'] = secilen_detay
-    df_step3 = df_step2[df_step2['MODEL_DETAYI'] == secilen_detay]
-
-    # 4. FIT
-    fit_list = sorted(df_step3['FIT'].astype(str).unique())
-    secilen_fit = st.selectbox("FIT", fit_list)
-    inputs['FIT'] = secilen_fit
-
-with col_main2:
-    st.subheader("⚙️ Teknik Detaylar")
-    
-    # Diğer girişler
-    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].astype(str).unique()))
-    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].astype(str).unique()))
-
-    # Asorti
-    asorti_list = sorted(df_step2['ASORTI'].astype(str).unique())
-    if not asorti_list: asorti_list = sorted(df['ASORTI'].astype(str).unique())
-    inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
-
-    # Sayısal Girişler (Yan yana)
-    c1, c2 = st.columns(2)
-    inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", 90.0, 195.0, 146.0)
-    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -13.0, 0.0, -1.5)
-    
-    c3, c4 = st.columns(2)
-    inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, 1.5)
-    inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
-
-    inputs['PARCA_sAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 2.0)
-
-# -----------------------------
-# 3. HESAPLA
-# -----------------------------
-st.divider()
-if st.button("HESAPLA", type="primary", use_container_width=True):
-    if model:
-        try:
-            X_new = pd.DataFrame([inputs])
-            # Sütun sıralaması eğitimdeki ile aynı olmalı
-            cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT',
-                            'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
-            
-            X_new_pool = Pool(X_new, cat_features=cat_features)
-            prediction = model.predict(X_new_pool)[0]
-            
-            st.success(f"🧵 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
-        except Exception as e:
-            st.error(f"Hesaplama Hatası: {e}")
-            st.warning("Veri setindeki sütun isimlerinin model ile uyumlu olduğundan emin olun.")
-    else:
-        st.error("Model yüklenemediği için hesaplama yapılamıyor.")
+    X_new_pool = Pool(X_new, cat_features=cat_features)
+    prediction = model.predict(X_new_pool)[0]
+    st.success(f"🔮 Tahmini Birim Sarfiyat: **{prediction:.2f}**")
