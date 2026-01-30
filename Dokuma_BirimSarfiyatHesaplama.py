@@ -67,7 +67,7 @@ X_new = pd.DataFrame([inputs])
 if st.button("Tahmin Et"):
     from catboost import Pool
 
-    cat_features = ['DEPARTMAN', 'MODEL_TURU', 'Model_Detayi','FIT',
+    cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI','FIT',
                     'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
 
     X_new_pool = Pool(X_new, cat_features=cat_features)
