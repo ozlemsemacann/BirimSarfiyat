@@ -37,13 +37,13 @@ inputs['KUMAS_CEKME_DEGERI_EN'] = st.number_input(
     "KUMAS_CEKME_DEGERI_EN",
     min_value=-13.0,
     max_value=0.0,
-    value=1.5) # Başlangıç değeri
+    value=-1.5) # Başlangıç değeri
 # Kumaş Çekme Değerini 1 ile 30 arasına sınırlama
 inputs['KUMAS_CEKME_DEGERI_BOY'] = st.number_input(
     "KUMAS_CEKME_DEGERI_BOY",
     min_value=-22.0,
     max_value=8.0,
-    value=1.5) # Başlangıç değeri
+    value=-1.5) # Başlangıç değeri
 inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", ['ANA_BEDEN','ASTAR','FILE','TELA','PAT_TELASI'])
 inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", ['YONLU','YONSUZ'])
 inputs['ASORTI'] = st.selectbox("ASORTI", ['5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_13/14 Y_','34_36_38_40_42_','7/8 Y_8/9 Y_9/10 Y_11/12 Y_13/14 Y_','34_36_38_40_42_44_','36_38_40_42_44_46_','34_36_38_40_42_44_46_','28_30_32_34_36_38_40_42_','34_36_38_40_42_44_46_48_','28_30_32_34_36_38_40_','32_34_36_38_40_42_','28_30_32_34_','7/8 Y_8/9 Y_9/10 Y_11/12 Y_12/13 Y_13/14 Y_','5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_12/13 Y_13/14 Y_','S_M_L_XL_XXL_3XL_','5/6 Y_7/8 Y_8/9 Y_9/10 Y_11/12 Y_','36_38_40_42_44_','30_32_34_36_','30_32_34_36_38_','6-9_9-12_12-18_18-24_24-36_3-4_4-5_5-6_','30_32_34_36_38_40_42_44_46_','28_30_32_34_36_38_','S_M_L_XL_XXL_','XS_S_M_L_XL_XXL_','XS_S_M_L_XL_'])
