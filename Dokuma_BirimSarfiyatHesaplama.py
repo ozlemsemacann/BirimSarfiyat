@@ -58,7 +58,7 @@ inputs['PARCA_SAYISI'] = st.number_input(
     "PARCA_SAYISI",
     min_value=1.0,
     max_value=30.0,
-    value=2.0) # Başlangıç değeri
+    value=18.0) # Başlangıç değeri
 
 # DataFrame oluştur
 X_new = pd.DataFrame([inputs])
@@ -73,6 +73,7 @@ if st.button("Tahmin Et"):
     X_new_pool = Pool(X_new, cat_features=cat_features)
     prediction = model.predict(X_new_pool)[0]
     st.success(f"🔮 Tahmini Birim Sarfiyat: **{prediction:.2f}**")
+
 
 
 
