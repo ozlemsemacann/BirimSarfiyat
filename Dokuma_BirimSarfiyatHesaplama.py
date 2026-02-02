@@ -1,79 +1,151 @@
 import streamlit as st
 import pandas as pd
-from catboost import CatBoostRegressor
+from catboost import CatBoostRegressor, Pool
+import os
 
 # -----------------------------
-# Modeli yükle
+# 1. AYARLAR VE MODEL YÜKLEME
 # -----------------------------
+st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
+
 @st.cache_resource
 def load_model():
     model = CatBoostRegressor()
-    model.load_model("Dokuma_BirimSarfiyatModel.cbm")
-    return model
+    try:
+        model.load_model("Dokuma_BirimSarfiyatModel.cbm")
+        return model
+    except Exception as e:
+        st.error(f"Model dosyası bulunamadı: {e}")
+        return None
 
 model = load_model()
 
 # -----------------------------
-# Streamlit Arayüzü
+# 2. VERİ SETİNİ YÜKLEME (İlişkileri kurmak için şart)
 # -----------------------------
-st.title("🧵 Birim Sarfiyat Tahmini")
+st.title("🧵 Akıllı Birim Sarfiyat Tahmini")
 
-st.markdown("Modeli önceden eğittik ve yükledik. Şimdi değerleri gir, tahmini al!")
+# NOT: Buraya eğitimde kullandığın Excel dosyasının tam adını yazmalısın.
+# Eğer dosya kodun yanındaysa direkt adını yazman yeterli.
+EXCEL_DOSYA_ADI = "_YuklenenDokumaDosya30.1.xlsx" 
 
-# Kullanıcıdan girişler
+@st.cache_data
+def load_data():
+    # Önce klasörde dosya var mı kontrol edelim
+    if os.path.exists(EXCEL_DOSYA_ADI):
+        return pd.read_excel(EXCEL_DOSYA_ADI)
+    else:
+        return None
+
+df = load_data()
+
+# Eğer dosya klasörde yoksa manuel yükleme isteyelim
+if df is None:
+    st.warning(f"⚠️ '{EXCEL_DOSYA_ADI}' dosyası bulunamadı. İlişkileri kurmak için lütfen dosyayı yükleyin.")
+    uploaded_file = st.file_uploader("Veri Setini Yükle (Excel)", type=["xlsx", "xls"])
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file)
+    else:
+        st.stop() # Dosya yoksa durdur
+
+# -----------------------------
+# 3. BASAMAKLI FİLTRELEME (CASCADING FILTERS)
+# -----------------------------
+st.markdown("---")
+st.subheader("📋 Model Özellikleri")
+
 inputs = {}
-inputs['DEPARTMAN'] = st.selectbox("DEPARTMAN", ['MAN','BOY','BABYBOY'])
-inputs['MODEL_TURU'] = st.selectbox("MODEL_TURU", ['TROUSERS','LONG_SLEEVE_SHIRT','BERMUDA','SHORT_SLEEVE_SHIRT','OVERSHIRT','SWIMMING_SHORT','SHORT','OVERALLS'])
-inputs['MODEL_DETAYI'] = st.selectbox("MODEL_DETAYI",['5_CEP','5_CEP_BELI_LASTIKLI','5_CEP_BELI_LASTIKLI_CARGO','5_CEP_CARGO_CEP','5_CEP_PACA_KATLAMALI','ARKA_1_YAPISTIRMA_BELI_LASTIKLI','ARKA_2_YAPISTIRMA','ARKA_FILETO_BELI_LASTIKLI','BELI_LASTIKLI','CARGO_CEP_BEL_PACA_LASTIKLI','CARGO_CEP_BELI_LASTIKLI','CEP_YOK_CIFT_KAT_ROBA','CEP_YOK_ROBASIZ','CEP_YOK_TEK_KAT_ROBA','CEPSIZ_ROBALI','CEPSIZ_ROBALI_APOLETLI','CEPSIZ_ROBASIZ','CHINO_CEP','CHINO_CEP_ARKA_1_YAPISTIRMA_BEL_PACA_LASTIKLI','CHINO_CEP_ARKA_1_YAPISTIRMA_BELI_LASTIKLI','CHINO_CEP_ARKA_1_YAPISTIRMA_CARGO','CHINO_CEP_ARKA_1_YAPISTIRMA_CEP','CHINO_CEP_ARKA_2_YAPISTIRMA','CHINO_CEP_ARKA_2_YAPISTIRMA_BEL_PACA_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_BELI_LASTIKLI','CHINO_CEP_ARKA_2_YAPISTIRMA_CARGO','CHINO_CEP_ARKA_2_YAPISTIRMA_CARGO_BELI_LASTIKLI','CHINO_CEP_ARKA_FILETO','CHINO_CEP_ARKA_FILETO_BELI_LASTIKLI','CHINO_CEP_BEL_PACA_LASTIKLI','CHINO_CEP_BELI_LASTIKLI','CHINO_CEP_BELI_LASTIKLI_PACA_KATLAMALI','CHINO_CEP_CARGO_BEL_PACA_LASTIKLI','CHINO_CEP_CARGO_BELI_LASTIKLI','CIFT_CEP_ROBALI','CIFT_CEP_ROBALI_APOLETLI','CIFT_CEP_TEK_KAT_ROBA','CIFT_CEP_CIFT_KAT_ROBA','JUMPSUIT_1_CEP','JUMPSUIT_1_CEP_CHINO','PUNTEREZ_CARGO','SALOPET_1_CEP','TEK_CEP_ROBALI','TEK_CEP_ROBALI_APOLETLI','TEK_CEP_ROBASIZ','YAN_CEP_ARKA_1_YAPISTIRMA_BELI_LASTIKLI','YAN_CEP_ARKA_2_YAPISTIRMA_BEL_PACA_LASTIKLI','YAN_CEP_ARKA_FILETO_BEL_PACA_LASTIKLI','YAN_CEP_ARKA_FILETO_BELI_LASTIKLI','YAN_CEP_BEL_PACA_LASTIKLI','YAN_CEP_BELI_LASTIKLI','YAN_CEP_BELI_LASTIKLI_PACA_KATLAMALI','YAN_CEP_CARGO_BEL_PACA_LASTIKLI','YOK'])
-inputs['FIT'] = st.selectbox("FIT", ['SERGIO_REGULAR_FIT','OVERSIZE_FIT','PEDRO-SLIM_FIT_DENIM','90s_SLIM_FIT','RELAX_FIT','CARLO_SKINNY_FIT_DENIM','BAGGY_FIT','STRAIGHT_FIT','TAPERED_SLIM','TAPERED_FIT_RELAXED','SLIM_FIT','CARROT_RELAXED_FIT','TAPERED_WIDE_LEG_FIT','REGULAR_FIT','BARREL_FIT','SKATER_FIT','JORT','CARGO_RELAX_FIT','WIDE_LEG_FIT','SLIM_CUT_FIT','RELAXED_SLOUCHY_FIT','BOXY_FIT','MODERN_FIT','LUKE','ANDY','NATHAN','JOGGER_SLIM_FIT','CROPPED_FIT','JOGGER_FIT','RELAXED_JOGGER_FIT','CARGO_REGULAR_SHORT','CARGO_REGULAR_JOGGER','PULL_ON','CARGO_JOGGER_FIT','BALLOON_FIT','CARPENTER_FIT','CARGO_FIT','CARGO_PARACHUTE','LOOSE_FIT','JUMPSUIT','CARROT_FIT','5_POCKET_SHORT','CARGO_SHORT','SALOPET','TAPERED'])
-# Kumaş Eni Değerini 130 ile 176 arasına sınırlama
-inputs['KUMAS_ENI'] = st.number_input(
-    "KUMAS_ENI",
-    min_value=90.0,
-    max_value=195.0,
-    value=152.0) # Başlangıç değeri
-# Kumaş Çekme Değerini 1 ile 30 arasına sınırlama
-inputs['KUMAS_CEKME_DEGERI_EN'] = st.number_input(
-    "KUMAS_CEKME_DEGERI_EN",
-    min_value=-13.0,
-    max_value=0.0,
-    value=-3.0) # Başlangıç değeri
-# Kumaş Çekme Değerini 1 ile 30 arasına sınırlama
-inputs['KUMAS_CEKME_DEGERI_BOY'] = st.number_input(
-    "KUMAS_CEKME_DEGERI_BOY",
-    min_value=-22.0,
-    max_value=8.0,
-    value=-3.0) # Başlangıç değeri
-inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", ['ANA_BEDEN','ASTAR','FILE','TELA','PAT_TELASI'])
-inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", ['YONLU','YONSUZ'])
-inputs['ASORTI'] = st.selectbox("ASORTI", ['28/30(1),30/30(1),32/30(2),34/30(2),36/30(2)  |  31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(1)','27/30(1),28/30(1),29/30(1),30/30(1),31/30(1),32/30(2)  |  30/32(1),31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(1)  |  34/34(1)','28(1),29(1),30(2),31(2),32(3),33(2),34(2),36(1)','28(1),29(1),30(2),32(2),34(2),36(2),38(1),40(1)','28(1),29(1),30(2),32(3),34(2),36(1),38(1)','28(1),29(1),30(2),32(3),34(3),36(2),38(1)','28(1),29(2),30(2),32(2),34(2),36(2),38(1)','28(1),30(1),31(2),32(2),33(1),34(3),36(2),38(2),40(1)','28(1),30(1),32(2),33(1),34(3),36(2),38(1)','28(1),30(1),32(2),34(1),36(1),38(1),40(1),42(1)','28(1),30(1),32(2),34(3),36(2),38(2)','28(1),30(1),32(2),34(3),36(3),38(2),28(1)','28(1),30(2),32(2),34(2),36(1)','28(1),30(2),32(2),34(2),36(1),38(1)','28(1),30(2),32(2),34(2),36(2),38(1)','28(1),30(2),32(2),34(2),36(2),38(1),40(1)','28(1),30(2),32(2),34(2),36(2),38(1),40(1),42(1)','28(1),30(2),32(2),34(2),36(2),38(2),40(1)','28(1),30(2),32(2),34(2),36(2),38(2),40(1),42(1)','28(1),30(2),32(3),34(2),36(1),38(1)','28(1),30(2),32(3),34(3),36(1)','28(1),30(2),32(3),34(3),36(2)','28(1),30(2),32(3),34(3),36(2),38(1)','28(1),30(2),32(3),34(3),36(2),38(1),40(1)','28(1),30(2),32(3),34(3),36(2),38(2),40(1)','28(1),30(2),32(3),34(3),36(2),38(2),40(1),42(1),44(1)','28(1),30(2),32(3),34(3),36(3),38(1),40(1)','28(1),30(2),32(3),34(3),36(3),38(2),40(1)','28(2),29(2),30(2),32(3),34(1)','28(2),29(2),30(3),32(3),34(2),36(2),38(2)','28(2),30(2),31(1),32(3),33(1),34(2),36(1)','28(2),30(2),32(3),34(3),36(2),38(1),40(1)','28(2),30(2),32(3),34(4),36(2),38(1)','28(2),30(3),32(2),34(2),36(1)','28(2),30(3),32(3),34(2),36(2),38(1)','28(2),30(3),32(3),34(3),36(1)','28(2),30(3),32(3),34(3),36(2),38(1),40(1)','28(2),30(3),32(4),34(2),36(1),38(1)','28(3),30(3),32(3),34(3),36(1),38(1)','28/30(1),29/30(1),30/30(1),31/30(1),32/30(2),34/30(2),36/30(1)  |  32/32(2),33/32(1),34/32(2),36/32(1),38/32(1),40/32(1)  |  36/34(1)','28/30(1),29/30(1),30/30(1),32/30(1),34/30(1)  |  30/32(1),32/32(3),33/32(1),34/32(2),36/32(2)  |  34/34(1','28/30(1),29/30(1),30/30(1),32/30(1),34/30(1),36/30(1),38/30(1)  |  30/32(1),32/32(1),34/32(1),36/32(1)','28/30(1),29/30(1),30/30(1),32/30(2)  |  30/32(1),31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(1)  |  34/34(1),36/34(1)','28/30(1),29/30(1),30/30(1),32/30(2)  |  30/32(1),32/32(1),34/32(2),36/32(1)','28/30(1),29/30(1),30/30(1),32/30(2)  |  30/32(1),32/32(2),34/32(2),36/32(2)  |  32/34(2),34/34(1)','28/30(1),30/30(1),31/30(1),32/30(2),33/30(1),34/30(2),36/30(1)  |  34/32(2),36/32(1),38/32(1),40/32(1),42/32(1)','28/30(1),30/30(1),32/30(1)  |  30/32(1),32/32(1),34/32(2),36/32(1),38/32(1),40/32(1),42/32(1),44/32(1)  |  32/34(1),34/34(1),36/34(1)','28/30(1),30/30(1),32/30(1),34/30(1)  |  30/32(1),32/32(1),34/32(2),36/32(1)','28/30(1),30/30(1),32/30(2),34/30(2),36/30(2)  |  31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(1)  |  34/34(1)','28/30(2),29/30(2),30/30(1),32/30(2)  |  30/32(1),31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(1),40/32(1)  |  34/34(1),36/34(1)','28/30(2),29/30(2),30/30(2),32/30(3),34/30(1) | 30/32(2),31/32(2),32/32(2),33/32(2),34/32(3),36/32(2),38/32(1) | 36/34(1)','28/30/30(2),29/30/30(2),30/30/30(2),32/30/30(3),34/30/30(1)  |  30/32/32(2),31/32/32(2),32/32/32(2),33/32/32(2),34/32/32(3),36/32/32(2)  |  36/34/34(1)','29(1),30(1),31(2),32(2),33(2),34(2),36(1),38(1),40(1),42(1)','29(1),30(1),31(2),32(3),33(2),34(1),36(1)','29/30(1),30/30(1),31/30(1),32/30(2),34/30(2)  |  32/32(2),33/32(1),34/32(2),36/32(2),38/32(1)  |  32/34(1),36/34(1),36/34(1)','29/30(1),30/30(1),31/30(1),32/30(2),34/30(2)  |  32/32(2),33/32(1),34/32(2),36/32(2),38/32(1)  |  36/34(1)','30(1),31(1),32(2),33(1),34(3),36(2),38(1),40(1)','30(1),32(2),34(2),36(1)','30(1),32(2),34(2),36(2),38(2),40(1)','30(1),32(2),34(3),36(2),38(1)','30(1),32(2),34(3),36(2),38(2)','30(1),32(3),34(1),36(1),38(2)','30(1),32(3),34(2),36(1)','30(2),32(3),34(2),36(1)','30(2),32(3),34(3),36(2)','30(2),32(3),34(3),36(2),38(1)','30(2),32(3),34(3),36(2),38(1),40(1)','30/30(1),32/30(1),34/30(1),36/30(2)  |  32/32(1),34/32(1),36/32(1),38/32(1)  |  34/34(1),36/34(1),38/34(1)','30/30(1),32/30(1),34/30(2),36/30(2)  |  32/32(1),34/32(2),36/32(1),38/32(2),40/32(1),42/32(1)  |  34/34(1)','30/30(1),32/30(2),34/30(2),36/30(1)  |  31/32(1),32/32(1),33/32(1),34/32(2),36/32(1),38/32(2),40/32(1),42/32(1),44/32(1)  |  36/34(1)','30/30(1),32/30(2),34/30(2),36/30(2)  |  32/32(1),34/32(1),36/32(1),38/32(2),40/32(1),42/32(1)  |  34/34(1),36/34(1)','32(2),34(3),36(2),38(1)','32/30(1)  |  28/32(1),29/32(1),30/32(1),31/32(1),32/32(2),34/32(2),36/32(1)  |  32/34(2),33/34(1),34/34(2),36/34(1),38/34(1),40/34(1)','32/30(1)  |  28/32(1),29/32(1),30/32(1),31/32(1),32/32(2),34/32(2),36/32(1)  |  32/34(3),33/34(1),34/34(2),36/34(1),38/34(1)','32/30(1),33/30(2),34/30(2),36/30(2),38/30(1)  |  31/32(1),32/32(2),33/32(1),34/32(2),36/32(1),38/32(1),40/32(1)  |  34/34(1),36/34(1)','32/30(2),34/30(1)  |  30/32(1),32/32(1),34/32(2),36/32(1)','38(1),40(6),42(5),44(2),46(1)','5/6(1),7/8(1),8/9(1),9/10(1),11/12(1),13/14(1)','5/6(1),7/8(1),8/9(1),9/10(2),11/12(3),12/13(1),13/14(2)','5/6(1),7/8(1),8/9(1),9/10(2),11/12(3),13/14(1)','5/6(1),7/8(1),8/9(1),9/10(2),11/12(3),13/14(3)','5/6(1),7/8(1),8/9(2),9/10(2),11/12(2),13/14(2)','5/6(1),7/8(1),8/9(2),9/10(2),11/12(3),13/14(2)','5/6(1),7/8(1),8/9(2),9/10(2),11/12(3),13/14(3)','5/6(1),7/8(2),8/9(1),9/10(1),11/12(2),13/14(3)','5/6(1),7/8(2),8/9(1),9/10(2),11/12(3),13/14(1)','5/6(1),7/8(2),8/9(2),9/10(2),11/12(2),13/14(1)','5/6(1),7/8(2),8/9(2),9/10(2),11/12(2),13/14(2)','5/6(1),7/8(2),8/9(2),9/10(2),11/12(3),13/14(2)','5/6(2),7/8(2),8/9(1),9/10(2),11/12(2),13/14(2)','5/6(2),7/8(2),8/9(2),9/10(2),11/12(2),13/14(1)','6/7(1),7/8(1),8/9(2),9/10(3),10/11(3),11/12(2),12/13(1),13/14(1)','6/9(1),9/12(1),12/18(2),18/24(2),24/36(2),3/4(2),4/5(2),5/6(1)','7/8(1),8/9(1),9/10(2),11/12(2),13/14(3)','7/8(1),8/9(1),9/10(2),11/12(3),13(2)','7/8(1),8/9(1),9/10(2),11/12(3),13/14(3)','7/8(1),8/9(2),9/10(2),11/12(3),13/14(2)','7/8(1),8/9(2),9/10(2),11/12(3),13/14(3)','7/8(1),8/9(2),9/10(3),11/12(2),13/14(1)','7/8(1),8/9(2),9/10(3),11/12(3),13/14(1)','7/8(2),8/9(1),9/10(2),11/12(2),13/14(2)','7/8(2),8/9(2),9/10(2),11/12(2),12/13(1),13/14(1)','8/9(1),9/10(1),11/12(1),13/14(1)','9/12(1),12/18(1),18/24(2),24/36(2),3/4(2),4/5(2),5/6(2)','9/12(1),12/18(2),18/24(2),24/36(2),3/4(2),4/5(2),5/6(1)','9/12(2),12/18(2),18/24(2),24/36(2),3/4(2),4/5(2),5/6(2)','12/18(1),18/24(2),24/36(2),3/4(2),4/5(2)','12/18(1),18/24(2),24/36(2),3/4(2),4/5(2),5/6(1)','12/18(1),18/24(2),24/36(2),3/4(2),4/5(2),5/6(2)','12/18(1),18/24(2),24/36(2),4/5(2),5/6(2)','S(1),M(2),L(2),XL(1)','S(1),M(2),L(2),XL(1),XXL(1)','S(1),M(2),L(2),XL(2),XXL(1)','S(1),M(2),L(2),XL(2),XXL(2),3XL(1)','S(1),M(2),L(3),XL(2)','S(1),M(2),L(3),XL(2),XXL(1)','S(1),M(2),L(3),XL(3),XXL(2),3XL(1)','S(1),M(3),L(2),XL(1)','S(1),M(3),L(3),XL(1)','S(2),M(2),L(1),XL(1)','S(2),M(3),L(3),XL(1)','S(2),M(3),L(3),XL(2),XXL(1)','XS(1),S(2),M(2),L(2),XL(2),XXL(1)','XS(1),S(2),M(3),L(2),XL(1)','XS(1),S(2),M(3),L(2),XL(1),XXL(1)','XS(1),S(2),M(3),L(3),XL(1)','XS(1),S(2),M(3),L(3),XL(2),XXL(1)','XS(1),S(2),M(3),L(3),XL(3),XXL(2),3XL(1)','XS(1),S(3),M(3),L(3),XL(2),XXL(1),3XL(1)','XS(2),S(3),M(3),L(2),XL(1)','XS(2),S(3),M(3),L(2),XL(1),XXL(1)'])
-# Asorti Sayısı Değerini 1 ile 30 arasına sınırlama
-inputs['ASORTI_SAYISI'] = st.number_input(
-    "ASORTI_SAYISI",
-    min_value=5.0,
-    max_value=20.0,
-    value=10.0) # Başlangıç değeri
-# Parça Sayısı Değerini 1 ile 30 arasına sınırlama
-inputs['PARCA_SAYISI'] = st.number_input(
-    "PARCA_SAYISI",
-    min_value=1.0,
-    max_value=30.0,
-    value=18.0) # Başlangıç değeri
 
-# DataFrame oluştur
-X_new = pd.DataFrame([inputs])
+# 1. ADIM: DEPARTMAN
+# Tüm departmanları getir
+dept_list = sorted(df['DEPARTMAN'].astype(str).unique())
+secilen_dept = st.selectbox("DEPARTMAN", dept_list)
+inputs['DEPARTMAN'] = secilen_dept
 
-# Tahmin
-if st.button("Tahmin Et"):
-    from catboost import Pool
-
-    cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI','FIT',
-                    'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
-
-    X_new_pool = Pool(X_new, cat_features=cat_features)
-    prediction = model.predict(X_new_pool)[0]
-    st.success(f"🔮 Tahmini Birim Sarfiyat: **{prediction:.2f}**")
+# VERİYİ FİLTRELE: Sadece seçilen departmana ait satırları al
+df_step1 = df[df['DEPARTMAN'] == secilen_dept]
 
 
+# 2. ADIM: MODEL TÜRÜ
+# Listeyi filtrelenmiş (df_step1) veriden çekiyoruz.
+tur_list = sorted(df_step1['MODEL_TURU'].astype(str).unique())
+secilen_tur = st.selectbox("MODEL_TURU", tur_list)
+inputs['MODEL_TURU'] = secilen_tur
+
+# VERİYİ TEKRAR FİLTRELE: Sadece seçilen TÜR'e ait satırları al
+df_step2 = df_step1[df_step1['MODEL_TURU'] == secilen_tur]
 
 
+# 3. ADIM: MODEL DETAYI
+# Listeyi df_step2'den çekiyoruz. Böylece seçilen türde olmayan detaylar gelmez.
+detay_list = sorted(df_step2['MODEL_DETAYI'].astype(str).unique())
+secilen_detay = st.selectbox("MODEL_DETAYI", detay_list)
+inputs['MODEL_DETAYI'] = secilen_detay
+
+# VERİYİ TEKRAR FİLTRELE
+df_step3 = df_step2[df_step2['MODEL_DETAYI'] == secilen_detay]
+
+
+# 4. ADIM: FIT
+# Sadece yukarıdaki kombinasyona uygun FIT'ler gelir.
+fit_list = sorted(df_step3['FIT'].astype(str).unique())
+secilen_fit = st.selectbox("FIT", fit_list)
+inputs['FIT'] = secilen_fit
+
+# -----------------------------
+# 4. DİĞER GİRİŞLER (Sabit veya Bağımsız)
+# -----------------------------
+st.subheader("⚙️ Teknik Detaylar")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    # Bu listeleri de istersen veri setinden çekebilirsin: sorted(df['PASTAL_TURU'].unique())
+    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", ['ANA_BEDEN','ASTAR','FILE','TELA','PAT_TELASI'])
+    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", ['YONLU','YONSUZ'])
+    
+    # Asorti çok uzun olduğu için veri setinden çekmek daha mantıklı,
+    # ama model türüne göre değişiyorsa df_step2'den de çekebilirsin.
+    asorti_list = sorted(df['ASORTI'].astype(str).unique())
+    inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
+
+with col2:
+    inputs['KUMAS_ENI'] = st.number_input("KUMAS_ENI", 90.0, 195.0, 152.0)
+    inputs['KUMAS_CEKME_DEGERI_EN'] = st.number_input("CEKME_EN", -13.0, 0.0, -3.0)
+    inputs['KUMAS_CEKME_DEGERI_BOY'] = st.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
+
+col3, col4 = st.columns(2)
+with col3:
+    inputs['ASORTI_SAYISI'] = st.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
+with col4:
+    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0) # Senin kodunda PARCA_SAYISI (büyük S) dikkat et
+
+# -----------------------------
+# 5. TAHMİN BUTONU
+# -----------------------------
+st.divider()
+
+if st.button("Tüketim Tahmini Yap", type="primary", use_container_width=True):
+    if model:
+        # DataFrame oluştur
+        X_new = pd.DataFrame([inputs])
+
+        # CatBoost feature sırası ve isimleri çok önemlidir.
+        # Eğitimde kullandığın isimlerle birebir aynı olmalı.
+        cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT',
+                        'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
+
+        try:
+            X_new_pool = Pool(X_new, cat_features=cat_features)
+            prediction = model.predict(X_new_pool)[0]
+            
+            st.success(f"🧵 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
+            
+            # Seçim Özetini Göster
+            st.info(f"Seçim: {inputs['MODEL_TURU']} > {inputs['MODEL_DETAYI']} > {inputs['FIT']}")
+            
+        except Exception as e:
+            st.error(f"Tahmin hatası: {e}")
+            st.warning("Veri setindeki sütun isimleri ile modelin beklediği isimler uyuşmuyor olabilir.")
+    else:
+        st.error("Model yüklenemediği için işlem yapılamıyor.")
