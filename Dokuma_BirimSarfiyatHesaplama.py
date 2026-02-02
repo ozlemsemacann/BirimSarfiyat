@@ -9,7 +9,7 @@ import os
 st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-EXCEL_NAME = "_YuklenenDokumaDosya30.1.xlsx"
+EXCEL_NAME = "Yuklenecek.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
 excel_path = os.path.join(current_dir, EXCEL_NAME)
@@ -150,3 +150,4 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             st.error(f"Hesaplama Hatası: {e}")
     else:
         st.error("Model yüklenemedi.")
+
