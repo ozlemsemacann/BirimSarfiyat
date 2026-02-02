@@ -123,7 +123,7 @@ with col_sag:
     inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
     inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
 
-    inputs['PARCA_sAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0) # Büyük-küçük harf dikkat: PARCA_sAYISI yazmıştın eğitimde
+    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0) # Büyük-küçük harf dikkat: PARCA_sAYISI yazmıştın eğitimde
 
 # -----------------------------
 # 4. HESAPLAMA BUTONU (DÜZELTİLMİŞ HALİ)
@@ -161,3 +161,4 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             st.info("İpucu: Sütun isimleri veya veri tipleri model eğitimiyle uyuşmuyor olabilir.")
     else:
         st.error("Model yüklenemedi.")
+
