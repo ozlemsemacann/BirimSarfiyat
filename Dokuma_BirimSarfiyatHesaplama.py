@@ -125,22 +125,37 @@ with col_sag:
 
     inputs['PARCA_sAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0) # Büyük-küçük harf dikkat: PARCA_sAYISI yazmıştın eğitimde
 
-# -----------------------------------------------------------------------------
-# 4. HESAPLAMA
-# -----------------------------------------------------------------------------
+# -----------------------------
+# 4. HESAPLAMA BUTONU (DÜZELTİLMİŞ HALİ)
+# -----------------------------
 st.divider()
 if st.button("HESAPLA", type="primary", use_container_width=True):
     if model:
         try:
+            # 1. Kullanıcı girdilerinden DataFrame oluştur
             X_new = pd.DataFrame([inputs])
-            # CatBoost sütun sırası eğitimle birebir aynı olmalı
+            
+            # --- KRİTİK DÜZELTME BAŞLANGICI ---
+            # Modelin eğitildiği sütun sırasını al ve veriyi ona göre yeniden diz
+            # Bu işlem "At position 4..." hatasını kesin olarak çözer.
+            beklenen_siralama = model.feature_names_
+            X_new = X_new[beklenen_siralama]
+            # --- KRİTİK DÜZELTME BİTİŞİ ---
+
+            # Kategorik değişkenlerin listesi (Sadece isim olarak kalmalı)
             cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT',
                             'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
             
+            # Tahmin Havuzunu Oluştur
             X_new_pool = Pool(X_new, cat_features=cat_features)
+            
+            # Tahmin Yap
             prediction = model.predict(X_new_pool)[0]
             
             st.success(f"🧵 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
+            
+        except KeyError as e:
+            st.error(f"Veri eksik! Model '{e}' isimli bir sütun bekliyor ama girdilerde bu yok.")
         except Exception as e:
             st.error(f"Hesaplama Hatası: {e}")
             st.info("İpucu: Sütun isimleri veya veri tipleri model eğitimiyle uyuşmuyor olabilir.")
