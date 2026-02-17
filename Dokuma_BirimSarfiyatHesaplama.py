@@ -57,7 +57,7 @@ if df is None:
 # 2. TAM BAĞIMLI (CASCADING) FİLTRELEME ZİNCİRİ
 # -----------------------------------------------------------------------------
 st.title("🧵 Akıllı Birim Sarfiyat Tahmini")
-st.success(f"✅ '{EXCEL_NAME}' dosyası başarıyla yüklendi.")
+st.success(f"✅ Modeli önceden eğittik ve yükledik. Şimdi değerleri gir, tahmini al!")
 
 inputs = {}
 st.markdown("---")
@@ -155,3 +155,4 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             st.error(f"Hesaplama Hatası: {e}")
     else:
         st.error("Model yüklenemedi.")
+
