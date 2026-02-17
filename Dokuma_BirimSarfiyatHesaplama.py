@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# --- DOSYA ADI GÜNCELLENDİ ---
+# Dosya adları
 EXCEL_NAME = "YuklenenDokumaDosya172.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
@@ -26,12 +26,11 @@ def load_data():
         df = pd.read_excel(excel_path)
         
         # --- VERİ TEMİZLEME (DATA CLEANING) ---
-        # Büyük/Küçük harf farklarını ortadan kaldırır (Trousers = TROUSERS)
+        # Büyük/Küçük harf ve boşluk temizliği
         text_columns = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
         
         for col in text_columns:
             if col in df.columns:
-                # Başındaki/sonundaki boşlukları sil ve BÜYÜK HARF yap
                 df[col] = df[col].astype(str).str.strip().str.upper()
                 
         return df
@@ -111,7 +110,10 @@ with col_right:
 
     # Diğer Sabit Girişler
     inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
-    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique()))
+    
+    # --- BURASI DEĞİŞTİ ---
+    # reverse=True eklenerek Büyükten Küçüğe (veya Z-A) sıralama yapıldı
+    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique(), reverse=True))
 
     # Sayısal Değerler
     c1, c2 = st.columns(2)
@@ -135,7 +137,7 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
         try:
             X_new = pd.DataFrame([inputs])
             
-            # Otomatik Sıralama (Hata önleyici)
+            # Otomatik Sıralama
             beklenen_siralama = model.feature_names_
             X_new = X_new[beklenen_siralama]
 
