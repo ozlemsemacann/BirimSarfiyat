@@ -10,7 +10,7 @@ st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Dosya adları
+# --- DOSYA ADI GÜNCELLENDİ ---
 EXCEL_NAME = "YuklenenDokumaDosya172.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
@@ -26,14 +26,12 @@ def load_data():
         df = pd.read_excel(excel_path)
         
         # --- VERİ TEMİZLEME (DATA CLEANING) ---
-        # "Trousers" vs "TROUSERS" sorununu çözen kısım burasıdır.
-        # Tüm metin sütunlarını standart hale getiriyoruz.
+        # Büyük/Küçük harf farklarını ortadan kaldırır (Trousers = TROUSERS)
         text_columns = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
         
         for col in text_columns:
             if col in df.columns:
-                # 1. str.strip(): Başındaki/sonundaki görünmez boşlukları siler
-                # 2. str.upper(): Hepsini BÜYÜK HARF yapar (Trousers -> TROUSERS olur)
+                # Başındaki/sonundaki boşlukları sil ve BÜYÜK HARF yap
                 df[col] = df[col].astype(str).str.strip().str.upper()
                 
         return df
@@ -60,7 +58,7 @@ if df is None:
 # 2. TAM BAĞIMLI (CASCADING) FİLTRELEME ZİNCİRİ
 # -----------------------------------------------------------------------------
 st.title("🧵 Akıllı Birim Sarfiyat Tahmini")
-st.success(f"✅ '{EXCEL_NAME}' dosyası yüklendi ve veriler temizlendi.")
+st.success(f"✅ '{EXCEL_NAME}' dosyası başarıyla yüklendi.")
 
 inputs = {}
 st.markdown("---")
@@ -78,7 +76,7 @@ with col_left:
     # FİLTRE 1
     df_step1 = df[df['DEPARTMAN'] == secilen_dept]
 
-    # 2. MODEL TÜRÜ (Artık Trousers ve TROUSERS birleşmiş olarak gelecek)
+    # 2. MODEL TÜRÜ
     tur_list = sorted(df_step1['MODEL_TURU'].unique())
     secilen_tur = st.selectbox("MODEL_TURU", tur_list)
     inputs['MODEL_TURU'] = secilen_tur
@@ -124,7 +122,7 @@ with col_right:
     inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
     inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
 
-    # PARCA_SAYISI (Büyük harf)
+    # PARCA_SAYISI
     inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0)
 
 # -----------------------------------------------------------------------------
@@ -137,7 +135,7 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
         try:
             X_new = pd.DataFrame([inputs])
             
-            # Otomatik Sıralama
+            # Otomatik Sıralama (Hata önleyici)
             beklenen_siralama = model.feature_names_
             X_new = X_new[beklenen_siralama]
 
