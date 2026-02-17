@@ -11,7 +11,7 @@ st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Dosya adları
-EXCEL_NAME = "Yuklenecek.xlsx"
+EXCEL_NAME = "YuklenenDokumaDosya172.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
 excel_path = os.path.join(current_dir, EXCEL_NAME)
