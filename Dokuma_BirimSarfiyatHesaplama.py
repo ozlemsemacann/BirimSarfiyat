@@ -2,12 +2,15 @@ import streamlit as st
 import pandas as pd
 from catboost import CatBoostRegressor, Pool
 
+# Sayfa yapılandırması - Görseldeki geniş yerleşim için
+st.set_page_config(layout="wide")
+
 # -----------------------------
 # 1. Veri ve Model Yükleme
 # -----------------------------
 @st.cache_data
 def load_data():
-    # Excel dosyasını yüklüyoruz
+    # [cite_start]Excel dosyasını yüklüyoruz [cite: 11]
     df = pd.read_excel("YuklenenDokumaDosya172.xlsx")
     return df
 
@@ -21,107 +24,107 @@ df = load_data()
 model = load_model()
 
 # -----------------------------
-# Streamlit Arayüzü
+# Arayüz Başlığı
 # -----------------------------
-st.title("🧵 Birim Sarfiyat Tahmini (Dinamik Filtreli)")
-
-st.markdown("""
-Bu model **RMSE: 0.057** hata payı ile eğitilmiştir. 
-Seçimlerinize göre seçenekler otomatik olarak güncellenecektir.
-""")
+st.title("🧵 Dokuma Birim Sarfiyat Tahmini")
+st.success("✅ Modeli önceden eğittik ve yükledik. Şimdi değerleri gir, tahmini al!")
 
 # -----------------------------
-# 2. Birbirine Bağlı Filtreler (Cascading)
+# 2. Dinamik Filtre Mantığı ve Tasarım
 # -----------------------------
 
-col1, col2 = st.columns(2)
+# Görseldeki gibi iki ana bölüme ayırıyoruz
+col_left, col_right = st.columns(2)
 
-with col1:
+with col_left:
+    st.subheader("📋 Model Seçimi")
+    
     # DEPARTMAN Filtresi
-    dept_list = sorted(df['DEPARTMAN'].unique())
-    selected_dept = st.selectbox("DEPARTMAN", dept_list)
+    dept_list = sorted(df['DEPARTMAN'].unique().tolist())
+    selected_dept = st.selectbox("Departman", dept_list)
 
-    # MODEL_TURU (Departmana bağlı)
-    m_turu_list = sorted(df[df['DEPARTMAN'] == selected_dept]['MODEL_TURU'].unique())
-    selected_model_turu = st.selectbox("MODEL_TURU", m_turu_list)
+    # [cite_start]MODEL_TURU (Seçilen Departmana bağlı) [cite: 11]
+    m_turu_list = sorted(df[df['DEPARTMAN'] == selected_dept]['MODEL_TURU'].unique().tolist())
+    selected_model_turu = st.selectbox("Model_Turu", m_turu_list)
 
-    # MODEL_DETAYI (Departman ve Model Turuna bağlı)
-    m_detay_list = sorted(df[
-        (df['DEPARTMAN'] == selected_dept) & 
-        (df['MODEL_TURU'] == selected_model_turu)
-    ]['MODEL_DETAYI'].unique())
-    selected_model_detay = st.selectbox("MODEL_DETAYI", m_detay_list)
-
-with col2:
-    # FIT (Önceki seçimlere bağlı)
+    # FIT (Departman ve Model Turuna bağlı)
     fit_list = sorted(df[
         (df['DEPARTMAN'] == selected_dept) & 
+        (df['MODEL_TURU'] == selected_model_turu)
+    ]['FIT'].unique().tolist())
+    selected_fit = st.selectbox("Fit", fit_list)
+    
+    # MODEL_DETAYI (Arka planda süzülür, modele gönderilir)
+    m_detay_list = sorted(df[
+        (df['DEPARTMAN'] == selected_dept) & 
         (df['MODEL_TURU'] == selected_model_turu) &
-        (df['MODEL_DETAYI'] == selected_model_detay)
-    ]['FIT'].unique())
-    selected_fit = st.selectbox("FIT", fit_list)
+        (df['FIT'] == selected_fit)
+    ]['MODEL_DETAYI'].unique().tolist())
+    selected_model_detay = st.selectbox("Model Detayı", m_detay_list)
 
-    # PASTAL_TURU
-    pastal_turu_list = sorted(df['PASTAL_TURU'].unique())
-    selected_pastal_turu = st.selectbox("PASTAL_TURU", pastal_turu_list)
-
-    # ASORTI (Seçilen Fit ve Model Detayına göre süzülür)
+with col_right:
+    st.subheader("⚙️ Teknik Detaylar")
+    
+    # [cite_start]ASORTI (Seçilen Fit ve Model Turuna bağlı) [cite: 11]
     asorti_list = sorted(df[
         (df['MODEL_TURU'] == selected_model_turu) & 
         (df['FIT'] == selected_fit)
-    ]['ASORTI'].unique())
-    selected_asorti = st.selectbox("ASORTI", asorti_list)
+    ]['ASORTI'].unique().tolist())
+    selected_asorti = st.selectbox("Asorti", asorti_list)
 
-st.divider()
+    # PASTAL_TURU
+    pastal_turu_list = sorted(df['PASTAL_TURU'].unique().tolist())
+    selected_pastal_turu = st.selectbox("Pastal_Turu", pastal_turu_list)
 
-# -----------------------------
-# 3. Sayısal Girişler
-# -----------------------------
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    kumas_eni = st.number_input("KUMAS_ENI", 90.0, 195.0, 145.0)
-    asorti_sayisi = st.number_input("ASORTI_SAYISI", 1.0, 50.0, 10.0)
-
-with c2:
-    cekme_en = st.number_input("CEKME_EN", -13.0, 5.0, -4.0)
-    parca_sayisi = st.number_input("PARCA_SAYISI", 1.0, 100.0, 19.0)
-
-with c3:
-    cekme_boy = st.number_input("CEKME_BOY", -22.0, 10.0, -3.0)
-    pastal_detayi = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique()))
+    # Sayısal Değerler için yan yana kolonlar
+    c1, c2 = st.columns(2)
+    with c1:
+        kumas_eni = st.number_input("Kumas_Eni", value=145.0)
+        asorti_sayisi = st.number_input("Toplam_Asorti", value=10.0)
+    with c2:
+        # Dokuma modelinde çekme değerleri önemli olduğu için bunları ekledim
+        cekme_en = st.number_input("Kumas_Cekme_En", value=-4.0)
+        parca_sayisi = st.number_input("Parca_Sayisi", value=19.0)
 
 # -----------------------------
-# 4. Tahminleme
+# 3. Hesaplama Butonu ve Tahmin
 # -----------------------------
-if st.button("Hesapla ve Tahmin Et", type="primary"):
-    # Modelin eğitildiği kolon sırasına ve isimlerine sadık kalarak input oluşturma
+st.markdown("<br>", unsafe_allow_html=True) # Boşluk
+
+# Görseldeki gibi geniş kırmızı buton efekti için
+if st.button("HESAPLA", use_container_width=True, type="primary"):
+    
+    # [cite_start]Modelin beklediği kolon isimleri ve sırası [cite: 11]
     inputs = {
-        'DEPARTMAN': selected_dept,
-        'MODEL_TURU': selected_model_turu,
-        'MODEL_DETAYI': selected_model_detay,
-        'FIT': selected_fit,
-        'KUMAS_ENI': kumas_eni,
-        'KUMAS_CEKME_DEGERI_EN': cekme_en,
-        'KUMAS_CEKME_DEGERI_BOY': cekme_boy,
-        'PASTAL_TURU': selected_pastal_turu,
-        'PASTAL_DETAYI': pastal_detayi,
-        'ASORTI': selected_asorti,
         'ASORTI_SAYISI': asorti_sayisi,
-        'PARCA_SAYISI': parca_sayisi
+        'PARCA_SAYISI': parca_sayisi,
+        'KUMAS_CEKME_DEGERI_BOY': -3.0, # Sabit veya input eklenebilir
+        'KUMAS_CEKME_DEGERI_EN': cekme_en,
+        'KUMAS_ENI': kumas_eni,
+        'ASORTI': selected_asorti,
+        [cite_start]'PASTAL_DETAYI': 'YONSUZ', # Varsayılan [cite: 11]
+        'PASTAL_TURU': selected_pastal_turu,
+        'MODEL_DETAYI': selected_model_detay,
+        'MODEL_TURU': selected_model_turu,
+        'DEPARTMAN': selected_dept,
+        'FIT': selected_fit
     }
 
     X_new = pd.DataFrame([inputs])
     
-    # Modelin beklediği kategorik özellikler 
-    cat_features = [
-        'DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 
-        'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI'
-    ]
+    # [cite_start]Modelin kategorik kolonları [cite: 11]
+    cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 
+                    'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
 
     try:
         X_new_pool = Pool(X_new, cat_features=cat_features)
         prediction = model.predict(X_new_pool)[0]
-        st.success(f"🔮 Tahmini Birim Sarfiyat: **{prediction:.4f}**")
+        
+        st.markdown(f"""
+            <div style="text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;">
+                <h2 style="color: #ff4b4b;">🔮 Tahmini Birim Sarfiyat</h2>
+                <h1 style="font-size: 50px;">{prediction:.4f}</h1>
+            </div>
+        """, unsafe_allow_html=True)
     except Exception as e:
-        st.error(f"Tahmin sırasında bir hata oluştu: {e}")
+        st.error(f"Hata: {e}")
