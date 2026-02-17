@@ -8,11 +8,10 @@ import os
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 
-# Dosya yollarını dinamik olarak bul
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# DOSYA ADI (Senin istediğin gibi)
-EXCEL_NAME = "YuklenenDokumaDosya172.xlsx"
+# Dosya adları
+EXCEL_NAME = "Yuklenecek.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
 excel_path = os.path.join(current_dir, EXCEL_NAME)
@@ -25,6 +24,18 @@ def load_data():
         return None
     try:
         df = pd.read_excel(excel_path)
+        
+        # --- VERİ TEMİZLEME (DATA CLEANING) ---
+        # "Trousers" vs "TROUSERS" sorununu çözen kısım burasıdır.
+        # Tüm metin sütunlarını standart hale getiriyoruz.
+        text_columns = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
+        
+        for col in text_columns:
+            if col in df.columns:
+                # 1. str.strip(): Başındaki/sonundaki görünmez boşlukları siler
+                # 2. str.upper(): Hepsini BÜYÜK HARF yapar (Trousers -> TROUSERS olur)
+                df[col] = df[col].astype(str).str.strip().str.upper()
+                
         return df
     except Exception as e:
         st.error(f"Excel okuma hatası: {e}")
@@ -49,7 +60,7 @@ if df is None:
 # 2. TAM BAĞIMLI (CASCADING) FİLTRELEME ZİNCİRİ
 # -----------------------------------------------------------------------------
 st.title("🧵 Akıllı Birim Sarfiyat Tahmini")
-st.success(f"✅ '{EXCEL_NAME}' dosyası başarıyla yüklendi.")
+st.success(f"✅ '{EXCEL_NAME}' dosyası yüklendi ve veriler temizlendi.")
 
 inputs = {}
 st.markdown("---")
@@ -60,15 +71,15 @@ with col_left:
     st.subheader("📋 Model Seçimi")
 
     # 1. DEPARTMAN
-    dept_list = sorted(df['DEPARTMAN'].astype(str).unique())
+    dept_list = sorted(df['DEPARTMAN'].unique())
     secilen_dept = st.selectbox("DEPARTMAN", dept_list)
     inputs['DEPARTMAN'] = secilen_dept
     
     # FİLTRE 1
     df_step1 = df[df['DEPARTMAN'] == secilen_dept]
 
-    # 2. MODEL TÜRÜ
-    tur_list = sorted(df_step1['MODEL_TURU'].astype(str).unique())
+    # 2. MODEL TÜRÜ (Artık Trousers ve TROUSERS birleşmiş olarak gelecek)
+    tur_list = sorted(df_step1['MODEL_TURU'].unique())
     secilen_tur = st.selectbox("MODEL_TURU", tur_list)
     inputs['MODEL_TURU'] = secilen_tur
     
@@ -76,7 +87,7 @@ with col_left:
     df_step2 = df_step1[df_step1['MODEL_TURU'] == secilen_tur]
 
     # 3. MODEL DETAYI
-    detay_list = sorted(df_step2['MODEL_DETAYI'].astype(str).unique())
+    detay_list = sorted(df_step2['MODEL_DETAYI'].unique())
     secilen_detay = st.selectbox("MODEL_DETAYI", detay_list)
     inputs['MODEL_DETAYI'] = secilen_detay
     
@@ -84,29 +95,25 @@ with col_left:
     df_step3 = df_step2[df_step2['MODEL_DETAYI'] == secilen_detay]
 
     # 4. FIT
-    fit_list = sorted(df_step3['FIT'].astype(str).unique())
+    fit_list = sorted(df_step3['FIT'].unique())
     secilen_fit = st.selectbox("FIT", fit_list)
     inputs['FIT'] = secilen_fit
 
-    # FİLTRE 4 (Hata veren yer burasıydı, düzeltildi)
+    # FİLTRE 4
     df_step4 = df_step3[df_step3['FIT'] == secilen_fit]
 
 with col_right:
     st.subheader("⚙️ Teknik Detaylar")
 
-    # 5. ASORTI (BAĞLI FİLTRE)
-    # Listeyi en son filtrelenen df_step4'ten çekiyoruz
-    asorti_list = sorted(df_step4['ASORTI'].astype(str).unique())
-    
-    # Boş kalırsa önlem
+    # 5. ASORTI
+    asorti_list = sorted(df_step4['ASORTI'].unique())
     if not asorti_list:
-        asorti_list = sorted(df['ASORTI'].astype(str).unique())
-        
+        asorti_list = sorted(df['ASORTI'].unique())
     inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
 
     # Diğer Sabit Girişler
-    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].astype(str).unique()))
-    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].astype(str).unique()))
+    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
+    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique()))
 
     # Sayısal Değerler
     c1, c2 = st.columns(2)
