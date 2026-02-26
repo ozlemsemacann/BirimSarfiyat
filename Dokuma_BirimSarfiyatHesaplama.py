@@ -11,7 +11,7 @@ st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Dosya adlar?
-EXCEL_NAME = "YuklenenDokumaDosya172.xlsx"
+EXCEL_NAME = "YuklenenDokumaDosya262.xlsx"
 MODEL_NAME = "Dokuma_BirimSarfiyatModel.cbm"
 
 excel_path = os.path.join(current_dir, EXCEL_NAME)
@@ -154,4 +154,5 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
         except Exception as e:
             st.error(f"Hesaplama Hatas?: {e}")
     else:
+
         st.error("Model yuklenemedi.")
