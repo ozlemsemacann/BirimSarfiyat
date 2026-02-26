@@ -150,14 +150,9 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             
             # CatBoost Pool Oluşturma
             X_new_pool = Pool(X_new, cat_features=cat_features)
-            prediction = model.predict(X_new_pool)
+# [0] ekleyerek dizinin içindeki sayıyı dışarı çıkartıyoruz
+            prediction = model.predict(X_new_pool)[0]
             
             # Tahmin değerini yazdırma
             st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
-            
-        except KeyError as e:
-            st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
-        except Exception as e:
-            st.error(f"Hesaplama Hatası: {e}")
-    else:
-        st.error("Model yüklenemediği için hesaplama yapılamıyor.")
+
