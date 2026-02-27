@@ -115,8 +115,7 @@ with col_right:
     # Diğer Sabit Girişler
     inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
     
-    # --- BURASI DEĞİŞTİ ---
-    # reverse=True eklenerek Büyükten Küçüğe (veya Z-A) sıralama yapıldı
+    # Büyükten Küçüğe (veya Z-A) sıralama yapıldı
     inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique(), reverse=True))
 
     # Sayısal Değerler
@@ -150,9 +149,16 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             
             # CatBoost Pool Oluşturma
             X_new_pool = Pool(X_new, cat_features=cat_features)
-# [0] ekleyerek dizinin içindeki sayıyı dışarı çıkartıyoruz
+            
+            # Numpy Array format hatasını çözen [0] eklentisi
             prediction = model.predict(X_new_pool)[0]
             
             # Tahmin değerini yazdırma
             st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
-
+            
+        except KeyError as e:
+            st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
+        except Exception as e:
+            st.error(f"Hesaplama Hatası: {e}")
+    else:
+        st.error("Model yüklenemediği için hesaplama yapılamıyor.")
