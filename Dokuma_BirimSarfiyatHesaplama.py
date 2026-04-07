@@ -2,16 +2,18 @@ import streamlit as st
 import pandas as pd
 from catboost import CatBoostRegressor, Pool
 import os
-from streamlit_gsheets import GSheetsConnection  # EKLEME
-from datetime import datetime                    # EKLEME
+from streamlit_gsheets import GSheetsConnection
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
-# 1. AYARLAR, DOSYA BULMA VE BAĞLANTI
+# 1. AYARLAR VE BAĞLANTI
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="Sarfiyat Tahmini", layout="wide")
+st.set_page_config(page_title="Sarfiyat Tahmini v3", layout="wide")
 
-# Google Sheets Bağlantısı (URL'yi buraya girin)
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1A2ayp13KH1EPJqKd7zCOJx9wtR3sxEf4cduLnOD0wCE/edit#gid=0"
+# Google Sheets URL (Sadeleştirilmiş URL)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1A2ayp13KH1EPJqKd7zCOJx9wtR3sxEf4cduLnOD0wCE/edit"
+
+# Google Sheets Bağlantısı
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,7 +26,6 @@ model_path = os.path.join(current_dir, MODEL_NAME)
 @st.cache_data
 def load_data():
     if not os.path.exists(excel_path):
-        st.error(f"❌ Excel dosyası bulunamadı! Aranan dosya adı: {EXCEL_NAME}")
         return None
     try:
         df = pd.read_excel(excel_path)
@@ -33,34 +34,31 @@ def load_data():
             if col in df.columns:
                 df[col] = df[col].astype(str).str.strip().str.upper()
         return df
-    except Exception as e:
-        st.error(f"Excel okuma hatası: {e}")
+    except:
         return None
 
 @st.cache_resource
 def load_model():
     if not os.path.exists(model_path):
-        st.error(f"❌ Model dosyası bulunamadı! ({MODEL_NAME})")
         return None
     try:
         model = CatBoostRegressor()
         model.load_model(model_path)
         return model
-    except Exception as e:
-        st.error(f"Model yükleme hatası: {e}")
+    except:
         return None
 
 df = load_data()
 model = load_model()
 
 if df is None or model is None:
+    st.error("❌ Kritik dosyalar (Excel veya Model) bulunamadı!")
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 2. FİLTRELEME ZİNCİRİ
+# 2. ARAYÜZ VE FİLTRELER
 # -----------------------------------------------------------------------------
 st.title("🎯 Akıllı Birim Sarfiyat Tahmini")
-st.success(f"✅ Model hazır. Değerleri girin ve kaydedin.")
 
 inputs = {}
 st.markdown("---")
@@ -71,80 +69,84 @@ with col_left:
     dept_list = sorted(df['DEPARTMAN'].unique())
     secilen_dept = st.selectbox("DEPARTMAN", dept_list)
     inputs['DEPARTMAN'] = secilen_dept
-    df_step1 = df[df['DEPARTMAN'] == secilen_dept]
-
-    tur_list = sorted(df_step1['MODEL_TURU'].unique())
-    secilen_tur = st.selectbox("MODEL_TURU", tur_list)
-    inputs['MODEL_TURU'] = secilen_tur
-    df_step2 = df_step1[df_step1['MODEL_TURU'] == secilen_tur]
-
-    detay_list = sorted(df_step2['MODEL_DETAYI'].unique())
-    secilen_detay = st.selectbox("MODEL_DETAYI", detay_list)
-    inputs['MODEL_DETAYI'] = secilen_detay
-    df_step3 = df_step2[df_step2['MODEL_DETAYI'] == secilen_detay]
-
-    fit_list = sorted(df_step3['FIT'].unique())
-    secilen_fit = st.selectbox("FIT", fit_list)
-    inputs['FIT'] = secilen_fit
-    df_step4 = df_step3[df_step3['FIT'] == secilen_fit]
+    
+    df_s1 = df[df['DEPARTMAN'] == secilen_dept]
+    inputs['MODEL_TURU'] = st.selectbox("MODEL_TURU", sorted(df_s1['MODEL_TURU'].unique()))
+    
+    df_s2 = df_s1[df_s1['MODEL_TURU'] == inputs['MODEL_TURU']]
+    inputs['MODEL_DETAYI'] = st.selectbox("MODEL_DETAYI", sorted(df_s2['MODEL_DETAYI'].unique()))
+    
+    df_s3 = df_s2[df_s2['MODEL_DETAYI'] == inputs['MODEL_DETAYI']]
+    inputs['FIT'] = st.selectbox("FIT", sorted(df_s3['FIT'].unique()))
 
 with col_right:
     st.subheader("⚙️ Teknik Detaylar")
-    asorti_list = sorted(df_step4['ASORTI'].unique())
-    if not asorti_list: asorti_list = sorted(df['ASORTI'].unique())
-    inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
-
+    inputs['ASORTI'] = st.selectbox("ASORTI", sorted(df['ASORTI'].unique()))
     inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
     inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique(), reverse=True))
 
     c1, c2 = st.columns(2)
-    inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", 90.0, 195.0, 152.0)
-    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -13.0, 0.0, -3.0)
+    inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", value=152.0)
+    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", value=-3.0)
     
     c3, c4 = st.columns(2)
-    inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
-    inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
-    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0)
+    inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", value=-3.0)
+    inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", value=10.0)
+    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", value=18.0)
 
 # -----------------------------------------------------------------------------
-# 3. HESAPLAMA VE GOOGLE SHEETS KAYIT
+# 3. HESAPLAMA VE GÜVENLİ KAYIT
 # -----------------------------------------------------------------------------
 st.divider()
 
-if st.button("HESAPLA VE KAYDET", type="primary", use_container_width=True):
-    if model:
-        try:
-            # Tahmin işlemi
-            X_new = pd.DataFrame([inputs])
-            X_new = X_new[model.feature_names_]
-            cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
-            X_new_pool = Pool(X_new, cat_features=cat_features)
-            prediction = model.predict(X_new_pool)[0]
-            
-            st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
+if st.button("HESAPLA VE E-TABLOYA KAYDET", type="primary", use_container_width=True):
+    try:
+        # 1. Tahmin Yap
+        X_new = pd.DataFrame([inputs])
+        # Modelin beklediği sütun sırasına sok
+        X_new = X_new[model.feature_names_]
+        
+        cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
+        pool = Pool(X_new, cat_features=cat_features)
+        prediction = model.predict(pool)[0]
+        
+        st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.4f} mt**")
 
-            # --- KAYIT BÖLÜMÜ ---
-            # Mevcut veriyi oku (Hata almamak için sütunları eşitleyelim)
-            existing_data = conn.read(spreadsheet=SHEET_URL)
-            
-            # Yeni kaydı hazırla
-            new_record = X_new.copy()
-            new_record['Tahmin_Sarfiyat'] = round(prediction, 4)
-            new_record['Kayit_Tarihi'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Alt alta ekle
-            updated_df = pd.concat([existing_data, new_record], ignore_index=True)
-            
-            # Google Sheets'e yaz
-            conn.update(spreadsheet=SHEET_URL, data=updated_df)
-            st.toast("Veriler başarıyla Google Sheets'e kaydedildi! 💾")
+        # 2. Kaydetme İşlemi (Hata Yakalamalı)
+        with st.spinner("Veriler E-Tabloya gönderiliyor..."):
+            try:
+                # Mevcut verileri çek (Erişim hatası alırsak boş tablo oluşturur)
+                try:
+                    history_df = conn.read(spreadsheet=SHEET_URL, ttl=0)
+                except:
+                    history_df = pd.DataFrame()
 
-        except Exception as e:
-            st.error(f"Hata oluştu: {e}")
-    else:
-        st.error("Model yüklenemedi.")
+                # Yeni satırı oluştur
+                new_data = X_new.copy()
+                new_data['Tahmin_Sarfiyat'] = round(prediction, 4)
+                new_data['Kayit_Tarihi'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Geçmişi Göster
-with st.expander("📂 Tahmin Geçmişi"):
-    history = conn.read(spreadsheet=SHEET_URL)
-    st.dataframe(history, use_container_width=True)
+                # Mevcut tabloyla birleştir
+                updated_df = pd.concat([history_df, new_data], ignore_index=True)
+
+                # Google Sheets'e geri gönder
+                conn.update(spreadsheet=SHEET_URL, data=updated_df)
+                st.toast("Veri başarıyla kaydedildi! ✅")
+            except Exception as write_error:
+                st.error(f"Kayıt Hatası: {write_error}")
+                st.info("Lütfen Google Sheet dosyanızın 'Herkes (Düzenleyici)' olarak paylaşıldığından emin olun.")
+
+    except Exception as e:
+        st.error(f"Hesaplama hatası: {e}")
+
+# -----------------------------------------------------------------------------
+# 4. GEÇMİŞ GÖRÜNTÜLEME
+# -----------------------------------------------------------------------------
+st.divider()
+with st.expander("📂 Tahmin Arşivini Gör"):
+    try:
+        # ttl=0 önbelleği temizler, her açışta güncel veriyi çeker
+        archived_data = conn.read(spreadsheet=SHEET_URL, ttl=0)
+        st.dataframe(archived_data, use_container_width=True)
+    except:
+        st.warning("Arşiv şu an yüklenemiyor. Erişim yetkisi veya internet sorunu olabilir.")
