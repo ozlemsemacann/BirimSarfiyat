@@ -88,6 +88,7 @@ def send_notification_email(prediction_result, user_inputs):
         ------------------------------------------
         
         GİRİLEN VERİLER:
+        - MODEL KODU: {user_inputs.get('MODEL_KODU', '-')}
         - DEPARTMAN: {user_inputs.get('DEPARTMAN', '-')}
         - MODEL TURU: {user_inputs.get('MODEL_TURU', '-')}
         - MODEL DETAYI: {user_inputs.get('MODEL_DETAYI', '-')}
@@ -129,6 +130,9 @@ col_left, col_right = st.columns([1, 1])
 
 with col_left:
     st.subheader("📌 Model Seçimi")
+
+    # MANUEL MODEL KODU GİRİŞİ
+    inputs['MODEL_KODU'] = st.text_input("MODEL KODU (Manuel Giriniz)")
 
     # 1. DEPARTMAN
     dept_list = sorted(df['DEPARTMAN'].unique())
@@ -199,7 +203,7 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
         try:
             X_new = pd.DataFrame([inputs])
             
-            # Otomatik Sıralama
+            # Otomatik Sıralama (MODEL_KODU modelin eğitiminde yoksa otomatik olarak DataFrame'den düşürülür, bu sayede hata vermez)
             beklenen_siralama = model.feature_names_
             X_new = X_new[beklenen_siralama]
 
@@ -219,7 +223,7 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             with st.spinner('Bilgilendirme maili gönderiliyor...'):
                 basarili = send_notification_email(prediction, inputs)
                 if basarili:
-                    st.info("✉️ Bilgilendirme maili Özlem Hanım'a iletildi.")
+                    st.info("✉️ Bilgilendirme maili iletildi.")
             
         except KeyError as e:
             st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
