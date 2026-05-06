@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from catboost import CatBoostRegressor, Pool
 import os
+from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # -----------------------------------------------------------------------------
 # 1. AYARLAR VE OTOMATİK DOSYA BULMA
@@ -26,7 +30,6 @@ def load_data():
         df = pd.read_excel(excel_path)
         
         # --- VERİ TEMİZLEME (DATA CLEANING) ---
-        # Büyük/Küçük harf ve boşluk temizliği
         text_columns = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT', 'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
         
         for col in text_columns:
@@ -56,6 +59,62 @@ model = load_model()
 
 if df is None or model is None:
     st.stop()
+
+# -----------------------------------------------------------------------------
+# MAİL GÖNDERME FONKSİYONU
+# -----------------------------------------------------------------------------
+def send_notification_email(prediction_result, user_inputs):
+    try:
+        # Secrets'tan bilgileri çek
+        smtp_server = st.secrets["email"]["smtp_server"]
+        port = st.secrets["email"]["port"]
+        sender_email = st.secrets["email"]["sender_email"]
+        password = st.secrets["email"]["password"]
+        receiver_email = "ozlem.semacan@defacto.com"
+
+        # Mail İçeriğini Hazırla
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = "🔔 Yeni Dokuma Birim Sarfiyat Hesaplaması Yapıldı"
+
+        body = f"""
+        Merhaba,
+        
+        Uygulama üzerinden yeni bir dokuma hesaplaması yapıldı. Detaylar aşağıdadır:
+        
+        ------------------------------------------
+        🔮 TAHMİN SONUCU: {prediction_result:.3f} mt
+        ------------------------------------------
+        
+        GİRİLEN VERİLER:
+        - DEPARTMAN: {user_inputs.get('DEPARTMAN', '-')}
+        - MODEL TURU: {user_inputs.get('MODEL_TURU', '-')}
+        - MODEL DETAYI: {user_inputs.get('MODEL_DETAYI', '-')}
+        - FIT: {user_inputs.get('FIT', '-')}
+        - ASORTI: {user_inputs.get('ASORTI', '-')}
+        - PASTAL TURU: {user_inputs.get('PASTAL_TURU', '-')}
+        - PASTAL DETAYI: {user_inputs.get('PASTAL_DETAYI', '-')}
+        - KUMAS ENI: {user_inputs.get('KUMAS_ENI', '-')}
+        - CEKME EN: {user_inputs.get('KUMAS_CEKME_DEGERI_EN', '-')}
+        - CEKME BOY: {user_inputs.get('KUMAS_CEKME_DEGERI_BOY', '-')}
+        - ASORTI SAYISI: {user_inputs.get('ASORTI_SAYISI', '-')}
+        - PARCA SAYISI: {user_inputs.get('PARCA_SAYISI', '-')}
+        
+        Tarih: {datetime.now().strftime("%d-%m-%Y %H:%M:%S")}
+        """
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Maili Gönder
+        server = smtplib.SMTP(smtp_server, port)
+        server.starttls()
+        server.login(sender_email, password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Mail gönderme hatası: {e}")
+        return False
 
 # -----------------------------------------------------------------------------
 # 2. TAM BAĞIMLI (CASCADING) FİLTRELEME ZİNCİRİ
@@ -131,7 +190,7 @@ with col_right:
     inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0)
 
 # -----------------------------------------------------------------------------
-# 3. HESAPLAMA
+# 3. HESAPLAMA VE MAİL GÖNDERME
 # -----------------------------------------------------------------------------
 st.divider()
 
@@ -150,11 +209,17 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             # CatBoost Pool Oluşturma
             X_new_pool = Pool(X_new, cat_features=cat_features)
             
-            # Numpy Array format hatasını çözen [0] eklentisi
+            # Tahmin
             prediction = model.predict(X_new_pool)[0]
             
             # Tahmin değerini yazdırma
             st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
+
+            # --- MAİL GÖNDERME ---
+            with st.spinner('Bilgilendirme maili gönderiliyor...'):
+                basarili = send_notification_email(prediction, inputs)
+                if basarili:
+                    st.info("✉️ Bilgilendirme maili Özlem Hanım'a iletildi.")
             
         except KeyError as e:
             st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
