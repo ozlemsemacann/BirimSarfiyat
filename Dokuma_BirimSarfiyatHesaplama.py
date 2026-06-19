@@ -193,45 +193,6 @@ with col_right:
     # PARCA_SAYISI
     inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0)
 
-# -----------------------------------------------------------------------------
-# 3. HESAPLAMA VE MAİL GÖNDERME
-# -----------------------------------------------------------------------------
-st.divider()
-
-if st.button("HESAPLA", type="primary", use_container_width=True):
-    if model:
-        try:
-            X_new = pd.DataFrame([inputs])
-            
-            # Otomatik Sıralama (MODEL_KODU modelin eğitiminde yoksa otomatik olarak DataFrame'den düşürülür, bu sayede hata vermez)
-            beklenen_siralama = model.feature_names_
-            X_new = X_new[beklenen_siralama]
-
-            cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT',
-                            'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
-            
-            # CatBoost Pool Oluşturma
-            X_new_pool = Pool(X_new, cat_features=cat_features)
-            
-            # Tahmin
-            prediction = model.predict(X_new_pool)[0]
-            
-            # Tahmin değerini yazdırma
-            st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
-
-            # --- MAİL GÖNDERME ---
-            with st.spinner('Bilgilendirme maili gönderiliyor...'):
-                basarili = send_notification_email(prediction, inputs)
-                if basarili:
-                    st.info("✉️ Bilgilendirme maili iletildi.")
-            
-        except KeyError as e:
-            st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
-        except Exception as e:
-            st.error(f"Hesaplama Hatası: {e}")
-    else:
-        st.error("Model yüklenemediği için hesaplama yapılamıyor.")
-
 with col_right:
     st.subheader("⚙️ Teknik Detaylar")
 
