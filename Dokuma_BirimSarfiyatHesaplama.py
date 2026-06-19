@@ -232,10 +232,31 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
     else:
         st.error("Model yüklenemediği için hesaplama yapılamıyor.")
 
-# -------------------------------------------------------------------------
-    # ORTALAMA PARCA SAYISI HESAPLAMA
+with col_right:
+    st.subheader("⚙️ Teknik Detaylar")
+
+    # 5. ASORTI
+    asorti_list = sorted(df_step4['ASORTI'].unique())
+    if not asorti_list:
+        asorti_list = sorted(df['ASORTI'].unique())
+    inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
+
+    # Diğer Sabit Girişler
+    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
+    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique(), reverse=True))
+
+    # Sayısal Değerler
+    c1, c2 = st.columns(2)
+    inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", 90.0, 195.0, 152.0)
+    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -13.0, 0.0, -3.0)
+    
+    c3, c4 = st.columns(2)
+    inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
+    inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
+
     # -------------------------------------------------------------------------
-    # Seçilen 4 kritere göre verisetini filtrele
+    # ORTALAMA PARCA SAYISI HESAPLAMA (Anlık Çalışır)
+    # -------------------------------------------------------------------------
     mask = (
         (df['DEPARTMAN'] == inputs['DEPARTMAN']) &
         (df['MODEL_TURU'] == inputs['MODEL_TURU']) &
@@ -245,19 +266,21 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
     
     avg_parca = df[mask]['PARCA_SAYISI'].mean()
     
-    # Eğer bu kombinasyona ait geçmiş veri yoksa (NaN dönerse) varsayılan 18.0 olsun
     if pd.isna(avg_parca):
         default_parca = 18.0
+        st.warning("⚠️ Bu kombinasyona ait geçmiş veri bulunamadı. Varsayılan değer atanıyor.")
     else:
-        # Hesaplanan ortalamayı yuvarla ve 1 ile 30 sınırları içinde tut (number_input hata vermemesi için)
         default_parca = float(round(avg_parca))
         default_parca = max(1.0, min(30.0, default_parca))
-
-    # Kullanıcıyı bilgilendirelim
-    if not pd.isna(avg_parca):
         st.info(f"💡 Seçtiğiniz kriterlere göre geçmiş ortalama parça sayısı **{default_parca}** olarak hesaplandı.")
-    else:
-        st.warning("⚠️ Bu kombinasyona ait geçmiş veri bulunamadı. Varsayılan değer atanıyor.")
 
-    # PARCA_SAYISI (Dinamik default değer ile)
+    # PARCA_SAYISI
     inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, value=default_parca)
+
+# -----------------------------------------------------------------------------
+# 3. HESAPLAMA VE MAİL GÖNDERME
+# -----------------------------------------------------------------------------
+st.divider()
+
+if st.button("HESAPLA", type="primary", use_container_width=True):
+# ... (Kodun geri kalanı buradan devam eder)
