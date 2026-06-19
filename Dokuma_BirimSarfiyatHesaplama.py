@@ -231,3 +231,33 @@ if st.button("HESAPLA", type="primary", use_container_width=True):
             st.error(f"Hesaplama Hatası: {e}")
     else:
         st.error("Model yüklenemediği için hesaplama yapılamıyor.")
+
+# -------------------------------------------------------------------------
+    # ORTALAMA PARCA SAYISI HESAPLAMA
+    # -------------------------------------------------------------------------
+    # Seçilen 4 kritere göre verisetini filtrele
+    mask = (
+        (df['DEPARTMAN'] == inputs['DEPARTMAN']) &
+        (df['MODEL_TURU'] == inputs['MODEL_TURU']) &
+        (df['MODEL_DETAYI'] == inputs['MODEL_DETAYI']) &
+        (df['PASTAL_TURU'] == inputs['PASTAL_TURU'])
+    )
+    
+    avg_parca = df[mask]['PARCA_SAYISI'].mean()
+    
+    # Eğer bu kombinasyona ait geçmiş veri yoksa (NaN dönerse) varsayılan 18.0 olsun
+    if pd.isna(avg_parca):
+        default_parca = 18.0
+    else:
+        # Hesaplanan ortalamayı yuvarla ve 1 ile 30 sınırları içinde tut (number_input hata vermemesi için)
+        default_parca = float(round(avg_parca))
+        default_parca = max(1.0, min(30.0, default_parca))
+
+    # Kullanıcıyı bilgilendirelim
+    if not pd.isna(avg_parca):
+        st.info(f"💡 Seçtiğiniz kriterlere göre geçmiş ortalama parça sayısı **{default_parca}** olarak hesaplandı.")
+    else:
+        st.warning("⚠️ Bu kombinasyona ait geçmiş veri bulunamadı. Varsayılan değer atanıyor.")
+
+    # PARCA_SAYISI (Dinamik default değer ile)
+    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, value=default_parca)
