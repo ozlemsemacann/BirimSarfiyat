@@ -190,31 +190,6 @@ with col_right:
     inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
     inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
 
-    # PARCA_SAYISI
-    inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, 18.0)
-
-with col_right:
-    st.subheader("⚙️ Teknik Detaylar")
-
-    # 5. ASORTI
-    asorti_list = sorted(df_step4['ASORTI'].unique())
-    if not asorti_list:
-        asorti_list = sorted(df['ASORTI'].unique())
-    inputs['ASORTI'] = st.selectbox("ASORTI", asorti_list)
-
-    # Diğer Sabit Girişler
-    inputs['PASTAL_TURU'] = st.selectbox("PASTAL_TURU", sorted(df['PASTAL_TURU'].unique()))
-    inputs['PASTAL_DETAYI'] = st.selectbox("PASTAL_DETAYI", sorted(df['PASTAL_DETAYI'].unique(), reverse=True))
-
-    # Sayısal Değerler
-    c1, c2 = st.columns(2)
-    inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", 90.0, 195.0, 152.0)
-    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -13.0, 0.0, -3.0)
-    
-    c3, c4 = st.columns(2)
-    inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
-    inputs['ASORTI_SAYISI'] = c4.number_input("ASORTI_SAYISI", 5.0, 20.0, 10.0)
-
     # -------------------------------------------------------------------------
     # ORTALAMA PARCA SAYISI HESAPLAMA (Anlık Çalışır)
     # -------------------------------------------------------------------------
@@ -235,7 +210,7 @@ with col_right:
         default_parca = max(1.0, min(30.0, default_parca))
         st.info(f"💡 Seçtiğiniz kriterlere göre geçmiş ortalama parça sayısı **{default_parca}** olarak hesaplandı.")
 
-    # PARCA_SAYISI
+    # PARCA_SAYISI (Dinamik default değer ile)
     inputs['PARCA_SAYISI'] = st.number_input("PARCA_SAYISI", 1.0, 30.0, value=default_parca)
 
 # -----------------------------------------------------------------------------
@@ -244,4 +219,35 @@ with col_right:
 st.divider()
 
 if st.button("HESAPLA", type="primary", use_container_width=True):
-# ... (Kodun geri kalanı buradan devam eder)
+    if model:
+        try:
+            X_new = pd.DataFrame([inputs])
+            
+            # Otomatik Sıralama (MODEL_KODU modelin eğitiminde yoksa otomatik olarak DataFrame'den düşürülür, bu sayede hata vermez)
+            beklenen_siralama = model.feature_names_
+            X_new = X_new[beklenen_siralama]
+
+            cat_features = ['DEPARTMAN', 'MODEL_TURU', 'MODEL_DETAYI', 'FIT',
+                            'PASTAL_TURU', 'PASTAL_DETAYI', 'ASORTI']
+            
+            # CatBoost Pool Oluşturma
+            X_new_pool = Pool(X_new, cat_features=cat_features)
+            
+            # Tahmin
+            prediction = model.predict(X_new_pool)[0]
+            
+            # Tahmin değerini yazdırma
+            st.success(f"📏 Tahmini Birim Sarfiyat: **{prediction:.3f} mt**")
+
+            # --- MAİL GÖNDERME ---
+            with st.spinner('Bilgilendirme maili gönderiliyor...'):
+                basarili = send_notification_email(prediction, inputs)
+                if basarili:
+                    st.info("✉️ Bilgilendirme maili iletildi.")
+            
+        except KeyError as e:
+            st.error(f"Sütun Hatası (Eksik veya fazla özellik girildi): {e}")
+        except Exception as e:
+            st.error(f"Hesaplama Hatası: {e}")
+    else:
+        st.error("Model yüklenemediği için hesaplama yapılamıyor.")
