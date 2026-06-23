@@ -197,6 +197,7 @@ with col_right:
         (df['DEPARTMAN'] == inputs['DEPARTMAN']) &
         (df['MODEL_TURU'] == inputs['MODEL_TURU']) &
         (df['MODEL_DETAYI'] == inputs['MODEL_DETAYI']) &
+        (df['FIT'] == inputs['FIT']) &
         (df['PASTAL_TURU'] == inputs['PASTAL_TURU'])
     )
     
