@@ -184,7 +184,7 @@ with col_right:
     # Sayısal Değerler
     c1, c2 = st.columns(2)
     inputs['KUMAS_ENI'] = c1.number_input("KUMAS_ENI", 90.0, 195.0, 152.0)
-    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -19.0, 0.0, -3.0)
+    inputs['KUMAS_CEKME_DEGERI_EN'] = c2.number_input("CEKME_EN", -13.0, 0.0, -3.0)
     
     c3, c4 = st.columns(2)
     inputs['KUMAS_CEKME_DEGERI_BOY'] = c3.number_input("CEKME_BOY", -22.0, 8.0, -3.0)
